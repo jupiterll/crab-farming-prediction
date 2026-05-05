@@ -65,7 +65,4 @@ python visualization_system.py
 4. 轻量化部署方案
 5. 直观的可视化界面
 
-## 联系方式
-- 项目负责人: 林雅乐
-- 学号: 2417408
-- 邮箱: ryzhou@edu.shou.cn
+
