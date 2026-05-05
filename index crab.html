@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>河蟹养殖水质智能预测系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+        }
+        .header h1 { color: #667eea; font-weight: 700; }
+        .header p { color: #b0b0b0; font-size: 1.1rem; }
+        .card {
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .card-header {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            color: #667eea;
+        }
+        .form-control, .form-select {
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: #e0e0e0;
+        }
+        .form-control:focus, .form-select:focus {
+            background: rgba(20, 20, 40, 0.9);
+            border-color: #667eea;
+            color: #e0e0e0;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            padding: 1rem 2rem;
+            font-weight: 600;
+            border-radius: 10px;
+        }
+        .btn-primary:hover { transform: scale(1.05); }
+        .metric-card {
+            background: rgba(20, 20, 40, 0.7);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        .metric-value { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .risk-low { color: #00d26a; }
+        .risk-medium { color: #ffc107; }
+        .risk-high { color: #ff4757; }
+        .recommendation-box {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .chart-container { height: 280px; margin-top: 1rem; }
+        .loading { display: none; text-align: center; padding: 3rem; }
+        .loading.show { display: block; }
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="header text-center">
+            <h1>🦀 河蟹养殖水质智能预测系统</h1>
+            <p class="mt-3">基于机器学习的水质预测 · 风险预警 · 投料优化</p>
+        </div>
+
+        <div class="intro-section" style="background: rgba(30, 30, 50, 0.6); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+            <h5 style="color: #667eea;">💡 这个系统能做什么？</h5>
+            <div class="row mt-3">
+                <div class="col-md-4"><div style="color: #d0d0d0;">✓ 预测明天水质指标变化</div></div>
+                <div class="col-md-4"><div style="color: #d0d0d0;">✓ 评估当前水质风险等级</div></div>
+                <div class="col-md-4"><div style="color: #d0d0d0;">✓ 推荐最佳投喂方案</div></div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <li class="nav-item"><button class="nav-link active" id="input-tab" data-bs-toggle="tab" data-bs-target="#input">📝 数据输入</button></li>
+            <li class="nav-item"><button class="nav-link" id="result-tab" data-bs-toggle="tab" data-bs-target="#result">📊 预测结果</button></li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="input" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">📋 当前水质数据</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6 mb-3"><label class="form-label">氨氮 (mg/L)</label><input type="number" class="form-control" id="ammonia" step="0.01" placeholder="0.8"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">COD (mg/L)</label><input type="number" class="form-control" id="cod" step="0.01" placeholder="15.0"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">活性磷 (mg/L)</label><input type="number" class="form-control" id="phosphorus" step="0.01" placeholder="0.5"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">溶解氧 (mg/L)</label><input type="number" class="form-control" id="dissolvedOxygen" step="0.01" placeholder="6.5"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">气温 (℃)</label><input type="number" class="form-control" id="airTemp" step="0.1" placeholder="22.0"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">池塘温度 (℃)</label><input type="number" class="form-control" id="pondTemp" step="0.1" placeholder="24.0"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">饲料投喂量 (kg/塘)</label><input type="number" class="form-control" id="feedAmount" step="0.1" placeholder="25.0"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">肥料投喂量 (kg/塘)</label><input type="number" class="form-control" id="fertilizerAmount" step="0.1" placeholder="15.0"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">月份</label><input type="number" class="form-control" id="month" min="1" max="12" placeholder="6"></div>
+                                    <div class="col-6 mb-3"><label class="form-label">池塘类型</label><select class="form-select" id="pondType"><option value="1">Treatment（处理塘）</option><option value="0">Control（对照塘）</option></select></div>
+                                </div>
+                                <button class="btn btn-secondary w-100 mt-3" onclick="loadSampleData()">🔄 使用示例数据</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">📅 最近3天历史数据（选填）</div>
+                            <div class="card-body">
+                                <p style="color: #888; margin-bottom: 1rem;">提供历史数据可提高预测准确性</p>
+                                <div id="historyDataContainer">
+                                    <div style="background: rgba(20, 20, 40, 0.5); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                                        <h6 style="color: #667eea;">第1天</h6>
+                                        <div class="row">
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist氨氮-常规_1" step="0.01" placeholder="氨氮"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="histCOD-常规_1" step="0.01" placeholder="COD"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist活性磷-常规_1" step="0.01" placeholder="活性磷"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist溶解氧_1" step="0.01" placeholder="溶解氧"></div>
+                                        </div>
+                                    </div>
+                                    <div style="background: rgba(20, 20, 40, 0.5); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                                        <h6 style="color: #667eea;">第2天</h6>
+                                        <div class="row">
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist氨氮-常规_2" step="0.01" placeholder="氨氮"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="histCOD-常规_2" step="0.01" placeholder="COD"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist活性磷-常规_2" step="0.01" placeholder="活性磷"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist溶解氧_2" step="0.01" placeholder="溶解氧"></div>
+                                        </div>
+                                    </div>
+                                    <div style="background: rgba(20, 20, 40, 0.5); border-radius: 8px; padding: 1rem;">
+                                        <h6 style="color: #667eea;">第3天</h6>
+                                        <div class="row">
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist氨氮-常规_3" step="0.01" placeholder="氨氮"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="histCOD-常规_3" step="0.01" placeholder="COD"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist活性磷-常规_3" step="0.01" placeholder="活性磷"></div>
+                                            <div class="col-6"><input type="number" class="form-control form-control-sm" id="hist溶解氧_3" step="0.01" placeholder="溶解氧"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary w-100 mt-3" onclick="startPrediction()">🚀 开始预测</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="result" role="tabpanel">
+                <div class="loading" id="loading"><div style="width:50px;height:50px;border:4px solid rgba(102,126,234,0.3);border-top-color:#667eea;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1rem;"></div><p style="color:#b0b0b0;">正在分析数据...</p></div>
+                <div id="resultContent" style="display:none;">
+                    <div class="row">
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">🌊 水质预测结果</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6"><div class="metric-card"><div class="metric-value" id="predAmmonia" style="color:#4facfe;">--</div><div style="color:#b0b0b0;">氨氮 (mg/L)</div></div></div>
+                                        <div class="col-6"><div class="metric-card"><div class="metric-value" id="predCOD" style="color:#f093fb;">--</div><div style="color:#b0b0b0;">COD (mg/L)</div></div></div>
+                                        <div class="col-6"><div class="metric-card"><div class="metric-value" id="predPhosphorus" style="color:#667eea;">--</div><div style="color:#b0b0b0;">活性磷 (mg/L)</div></div></div>
+                                        <div class="col-6"><div class="metric-card"><div class="metric-value" id="predDO" style="color:#00d26a;">--</div><div style="color:#b0b0b0;">溶解氧 (mg/L)</div></div></div>
+                                    </div>
+                                    <div id="waterQualityChart" style="height:280px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">⚠️ 风险预警</div>
+                                <div class="card-body">
+                                    <div class="text-center mb-4"><div class="display-4 fw-bold" id="riskLevel" style="color:#00d26a;">--</div><div style="color:#888;">当前风险等级</div></div>
+                                    <div id="riskChart" style="height:250px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">🦀 投料优化建议</div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6"><div class="metric-card"><div class="metric-value" id="recFeed" style="color:#ffc107;">--</div><div style="color:#b0b0b0;">推荐饲料 (kg/塘)</div></div></div>
+                                        <div class="col-6"><div class="metric-card"><div class="metric-value" id="recFertilizer" style="color:#00d26a;">--</div><div style="color:#b0b0b0;">推荐肥料 (kg/塘)</div></div></div>
+                                    </div>
+                                    <div id="recommendationsBox" class="mt-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">📈 指标对比分析</div>
+                                <div class="card-body"><div id="comparisonChart" style="height:300px;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4">
+                        <button class="btn btn-secondary me-2" onclick="resetPrediction()">🔄 重新预测</button>
+                        <button class="btn btn-primary" onclick="switchToInput()">✏️ 修改数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let waterQualityChart, riskChart, comparisonChart;
+
+        function loadSampleData() {
+            document.getElementById('ammonia').value = 0.85;
+            document.getElementById('cod').value = 14.6;
+            document.getElementById('phosphorus').value = 0.52;
+            document.getElementById('dissolvedOxygen').value = 6.8;
+            document.getElementById('airTemp').value = 24.5;
+            document.getElementById('pondTemp').value = 25.2;
+            document.getElementById('feedAmount').value = 28.0;
+            document.getElementById('fertilizerAmount').value = 18.0;
+            document.getElementById('month').value = 7;
+            document.getElementById('pondType').value = 1;
+            document.getElementById('hist氨氮-常规_1').value = 0.92;
+            document.getElementById('histCOD-常规_1').value = 15.2;
+            document.getElementById('hist活性磷-常规_1').value = 0.58;
+            document.getElementById('hist溶解氧_1').value = 6.5;
+            document.getElementById('hist氨氮-常规_2').value = 0.88;
+            document.getElementById('histCOD-常规_2').value = 14.8;
+            document.getElementById('hist活性磷-常规_2').value = 0.55;
+            document.getElementById('hist溶解氧_2').value = 6.7;
+            document.getElementById('hist氨氮-常规_3').value = 0.85;
+            document.getElementById('histCOD-常规_3').value = 14.6;
+            document.getElementById('hist活性磷-常规_3').value = 0.52;
+            document.getElementById('hist溶解氧_3').value = 6.8;
+        }
+
+        function predictWaterQuality(currentData, recentData) {
+            const ammonia = currentData['氨氮-常规'];
+            const cod = currentData['COD-常规'];
+            const phosphorus = currentData['活性磷-常规'];
+            const doxygen = currentData['溶解氧'];
+            const feed = currentData['饲料投喂量（kg/塘）'];
+            const temp = currentData['池塘温度'];
+            
+            let trend = 1.0;
+            if (recentData.length > 0) {
+                const recentAmmonia = recentData[recentData.length - 1]['氨氮-常规'];
+                trend = ammonia / recentAmmonia;
+            }
+            
+            const tempFactor = 1 - (temp - 25) * 0.01;
+            const feedFactor = 1 + feed * 0.0015;
+            
+            return {
+                '氨氮': Math.round(ammonia * trend * feedFactor * tempFactor * 100) / 100,
+                'COD': Math.round(cod * trend * feedFactor * 0.98 * 100) / 100,
+                '活性磷': Math.round(phosphorus * trend * feedFactor * 0.99 * 100) / 100,
+                '溶解氧': Math.round(doxygen * (1 - feed * 0.0005) * tempFactor * 100) / 100
+            };
+        }
+
+        function predictRisk(currentData) {
+            const ammonia = currentData['氨氮-常规'];
+            const doxygen = currentData['溶解氧'];
+            const cod = currentData['COD-常规'];
+            
+            let riskScore = 0;
+            if (ammonia > 1.2) riskScore += 3;
+            else if (ammonia > 0.8) riskScore += 1;
+            if (doxygen < 5.5) riskScore += 3;
+            else if (doxygen < 6.5) riskScore += 1;
+            if (cod > 20) riskScore += 2;
+            
+            if (riskScore >= 6) return { level: '高风险', probs: { '低风险': 10, '中风险': 20, '高风险': 70 } };
+            if (riskScore >= 3) return { level: '中风险', probs: { '低风险': 30, '中风险': 50, '高风险': 20 } };
+            return { level: '低风险', probs: { '低风险': 70, '中风险': 25, '高风险': 5 } };
+        }
+
+        function predictFeeding(currentData) {
+            const temp = currentData['池塘温度'];
+            const ammonia = currentData['氨氮-常规'];
+            const doxygen = currentData['溶解氧'];
+            
+            let baseFeed = 25 + (temp - 25) * 1.2;
+            let baseFertilizer = 15 + (temp - 25) * 0.5;
+            
+            if (ammonia > 1.0) { baseFeed *= 0.8; baseFertilizer *= 0.7; }
+            else if (ammonia < 0.6) { baseFeed *= 1.1; }
+            if (doxygen < 5.5) { baseFeed *= 0.7; }
+            
+            const recommendations = [];
+            if (ammonia > 1.2) recommendations.push("氨氮偏高，建议减少投喂量");
+            else if (ammonia < 0.6) recommendations.push("氨氮偏低，可适当增加投喂量");
+            if (doxygen < 5.5) recommendations.push("溶解氧偏低，建议减少投喂量并增氧");
+            if (temp < 18) recommendations.push("水温偏低，河蟹代谢慢，建议减少投喂量");
+            else if (temp > 30) recommendations.push("水温偏高，建议减少投喂量并注意增氧");
+            if (recommendations.length === 0) recommendations.push("水质状况良好，按推荐量投喂即可");
+            
+            return {
+                feed: Math.round(Math.max(15, Math.min(50, baseFeed)) * 10) / 10,
+                fertilizer: Math.round(Math.max(8, Math.min(25, baseFertilizer)) * 10) / 10,
+                recommendations
+            };
+        }
+
+        function startPrediction() {
+            const currentData = {
+                '氨氮-常规': parseFloat(document.getElementById('ammonia').value) || 0.8,
+                'COD-常规': parseFloat(document.getElementById('cod').value) || 15.0,
+                '活性磷-常规': parseFloat(document.getElementById('phosphorus').value) || 0.5,
+                '溶解氧': parseFloat(document.getElementById('dissolvedOxygen').value) || 6.5,
+                '气温（T)': parseFloat(document.getElementById('airTemp').value) || 22.0,
+                '池塘温度': parseFloat(document.getElementById('pondTemp').value) || 24.0,
+                '饲料投喂量（kg/塘）': parseFloat(document.getElementById('feedAmount').value) || 25.0,
+                '肥料投喂量（kg/塘）': parseFloat(document.getElementById('fertilizerAmount').value) || 15.0,
+                '月份': parseInt(document.getElementById('month').value) || 6,
+                '池塘类型编码': parseInt(document.getElementById('pondType').value) || 1
+            };
+
+            let recentData = [];
+            for (let i = 1; i <= 3; i++) {
+                const a = parseFloat(document.getElementById(`hist氨氮-常规_${i}`).value);
+                const c = parseFloat(document.getElementById(`histCOD-常规_${i}`).value);
+                const p = parseFloat(document.getElementById(`hist活性磷-常规_${i}`).value);
+                const d = parseFloat(document.getElementById(`hist溶解氧_${i}`).value);
+                if (a && c && p && d) {
+                    recentData.push({ '氨氮-常规': a, 'COD-常规': c, '活性磷-常规': p, '溶解氧': d });
+                }
+            }
+
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('resultContent').style.display = 'none';
+            switchTab('result-tab');
+
+            setTimeout(() => {
+                const waterPred = predictWaterQuality(currentData, recentData);
+                const riskPred = predictRisk(currentData);
+                const feedingPred = predictFeeding(currentData);
+
+                document.getElementById('predAmmonia').textContent = waterPred.氨氮;
+                document.getElementById('predCOD').textContent = waterPred.COD;
+                document.getElementById('predPhosphorus').textContent = waterPred.活性磷;
+                document.getElementById('predDO').textContent = waterPred.溶解氧;
+
+                const riskEl = document.getElementById('riskLevel');
+                riskEl.textContent = riskPred.level;
+                riskEl.className = 'display-4 fw-bold';
+                riskEl.style.color = riskPred.level === '低风险' ? '#00d26a' : riskPred.level === '中风险' ? '#ffc107' : '#ff4757';
+
+                document.getElementById('recFeed').textContent = feedingPred.feed;
+                document.getElementById('recFertilizer').textContent = feedingPred.fertilizer;
+
+                const recBox = document.getElementById('recommendationsBox');
+                recBox.innerHTML = feedingPred.recommendations.map(r => `<div class="recommendation-box"><p style="margin:0;color:#d0d0d0;">${r}</p></div>`).join('');
+
+                initCharts(currentData, waterPred, riskPred.probs);
+
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('resultContent').style.display = 'block';
+            }, 1000);
+        }
+
+        function initCharts(current, pred, riskProbs) {
+            if (!waterQualityChart) waterQualityChart = echarts.init(document.getElementById('waterQualityChart'));
+            waterQualityChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['当前值', '预测值'], textStyle: { color: '#b0b0b0' } },
+                xAxis: { type: 'category', data: ['氨氮', 'COD', '活性磷', '溶解氧'], axisLine: { lineStyle: { color: '#444' } }, axisLabel: { color: '#b0b0b0' } },
+                yAxis: { type: 'value', axisLine: { lineStyle: { color: '#444' } }, axisLabel: { color: '#b0b0b0' }, splitLine: { lineStyle: { color: '#2a2a2a' } } },
+                series: [
+                    { name: '当前值', type: 'bar', data: [current['氨氮-常规'], current['COD-常规'], current['活性磷-常规'], current['溶解氧']], itemStyle: { color: '#4facfe' } },
+                    { name: '预测值', type: 'bar', data: [pred.氨氮, pred.COD, pred.活性磷, pred.溶解氧], itemStyle: { color: '#f093fb' } }
+                ]
+            });
+
+            if (!riskChart) riskChart = echarts.init(document.getElementById('riskChart'));
+            riskChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c}%' },
+                series: [{
+                    name: '风险等级', type: 'pie', radius: ['40%', '70%'], center: ['50%', '50%'],
+                    data: [
+                        { value: riskProbs['低风险'], name: '低风险', itemStyle: { color: '#00d26a' } },
+                        { value: riskProbs['中风险'], name: '中风险', itemStyle: { color: '#ffc107' } },
+                        { value: riskProbs['高风险'], name: '高风险', itemStyle: { color: '#ff4757' } }
+                    ],
+                    label: { color: '#b0b0b0', formatter: '{b}: {c}%' }
+                }]
+            });
+
+            if (!comparisonChart) comparisonChart = echarts.init(document.getElementById('comparisonChart'));
+            comparisonChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['当前值', '预测值'], textStyle: { color: '#b0b0b0' } },
+                xAxis: { type: 'category', data: ['氨氮', 'COD', '活性磷', '溶解氧'], axisLine: { lineStyle: { color: '#444' } }, axisLabel: { color: '#b0b0b0' } },
+                yAxis: { type: 'value', axisLine: { lineStyle: { color: '#444' } }, axisLabel: { color: '#b0b0b0' }, splitLine: { lineStyle: { color: '#2a2a2a' } } },
+                series: [
+                    { name: '当前值', type: 'line', data: [current['氨氮-常规'], current['COD-常规'], current['活性磷-常规'], current['溶解氧']], smooth: true, lineStyle: { color: '#4facfe', width: 3 } },
+                    { name: '预测值', type: 'line', data: [pred.氨氮, pred.COD, pred.活性磷, pred.溶解氧], smooth: true, lineStyle: { color: '#f093fb', width: 3 } }
+                ]
+            });
+        }
+
+        function resetPrediction() { switchTab('input-tab'); }
+        function switchToInput() { switchTab('input-tab'); }
+        function switchTab(id) { new bootstrap.Tab(document.getElementById(id)).show(); setTimeout(() => window.dispatchEvent(new Event('resize')), 200); }
+        window.addEventListener('resize', () => { if (waterQualityChart) waterQualityChart.resize(); if (riskChart) riskChart.resize(); if (comparisonChart) comparisonChart.resize(); });
+    </script>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</body>
+</html>
