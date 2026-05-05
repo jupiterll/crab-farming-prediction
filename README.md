@@ -16,10 +16,6 @@ Crab river/
 │   ├── comprehensive_data_processing.py  # 综合数据处理脚本
 │   ├── model_training.py     # 模型训练脚本
 │   └── visualization_system.py  # 可视化系统脚本
-├── docs/                      # 文档文件夹
-│   ├── 智农降水-耕区慧测平台25年.doc
-│   ├── 气象智图-全景AI气象数据可视化与分析平台25年.doc
-│   └── 2417408-林雅乐-专业基础能力实践大作业报告.doc
 ├── output/                    # 输出文件夹
 └── README.md                  # 项目说明文档
 ```
