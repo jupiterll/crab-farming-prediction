@@ -1,0 +1,6 @@
+[tool.vercel]
+entrypoint = "app.py:app"
+
+[project]
+name = "crab-farming-prediction"
+version = "1.0.0"
